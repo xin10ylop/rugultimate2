@@ -10,7 +10,7 @@ from operators import creator_funding
 OUT = os.environ.get("RUG_OUT", os.path.join(os.path.dirname(__file__), "..", "..", "data", "derived"))
 os.makedirs(OUT, exist_ok=True)
 t0 = time.time()
-D = load_raw(); X = load_transfers()
+D = load_raw(kinds=("trades", "creates", "completes")); X = load_transfers()
 tr, cr = D["trades"], D["creates"]
 print("loaded", {k: v.shape for k, v in D.items()}, X.shape, f"{time.time()-t0:.0f}s", flush=True)
 T = build_tapes(tr, cr)

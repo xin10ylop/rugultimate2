@@ -25,7 +25,7 @@ def build_grid(cache=os.path.join(D, f"grid_age{TRIG_AGE}_s{SIZE}.npz")):
     if os.path.exists(cache) and os.path.getmtime(cache) > os.path.getmtime(os.path.join(D, "launches.parquet")):
         z = np.load(cache, allow_pickle=True)
         return F, dict(zip(z["mints"], z["R"])), dict(zip(z["mints"], z["W"]))
-    Dr = load_raw()
+    Dr = load_raw(kinds=("trades", "creates"))
     T = build_tapes(Dr["trades"], Dr["creates"])
     rng = np.random.default_rng(11); co = Costs()
     R, W = {}, {}

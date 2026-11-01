@@ -34,13 +34,15 @@ def files(kind):
     return sorted(out)
 
 
-def load_raw(min_slot=None, max_slot=None):
+CACHE = os.path.join(DATA, "cache")
+KINDS = ("trades", "creates", "completes", "failed", "txs", "other_ev")
+
+
+def _parse_pump_file(path):
     trades, creates, completes, failed, txs, other_ev = [], [], [], [], [], []
-    for path in files("pump_tx"):
+    if True:
         for r in _iter_gz(path):
             s = r["slot"]
-            if (min_slot and s < min_slot) or (max_slot and s > max_slot):
-                continue
             if r.get("err") is not None:
                 failed.append(dict(slot=s, idx=r["idx"], signer=r["signer"], err=r["err"], fee=r["fee"],
                                    cu=r.get("cu"), cu_price=r.get("cu_price"), cu_limit=r.get("cu_limit"),
@@ -71,28 +73,77 @@ def load_raw(min_slot=None, max_slot=None):
                 else:
                     other_ev.append(dict(slot=s, idx=r["idx"], ev=ev, prog=e.get("prog"), signer=r["signer"]))
 
-    def df(rows, keys):
-        if not rows:
-            return pl.DataFrame()
-        d = pl.DataFrame(rows, infer_schema_length=None)
-        return d.unique(subset=keys, keep="first").sort(keys)
+    def df(rows):
+        return pl.DataFrame(rows, infer_schema_length=None) if rows else pl.DataFrame()
+    return dict(trades=df(trades), creates=df(creates), completes=df(completes), failed=df(failed), txs=df(txs),
+                other_ev=df(other_ev))
 
-    return dict(trades=df(trades, ["slot", "idx", "k"]), creates=df(creates, ["slot", "idx", "mint"]),
-                completes=df(completes, ["slot", "idx", "mint"]), failed=df(failed, ["slot", "idx"]),
-                txs=df(txs, ["slot", "idx"]), other_ev=df(other_ev, ["slot", "idx", "ev"]))
+
+KEYS = dict(trades=["slot", "idx", "k"], creates=["slot", "idx", "mint"], completes=["slot", "idx", "mint"],
+            failed=["slot", "idx"], txs=["slot", "idx"], other_ev=["slot", "idx", "ev"])
+
+
+def _cached(path, parse, kinds):
+    """Parse a gz file once; cache each table as parquet keyed by path, size and mtime."""
+    os.makedirs(CACHE, exist_ok=True)
+    st = os.stat(path)
+    tag = f"{os.path.relpath(path, DATA).replace(os.sep, '__')}__{st.st_size}_{int(st.st_mtime)}"
+    out, ok = {}, True
+    for k in kinds:
+        cp = os.path.join(CACHE, f"{tag}__{k}.parquet")
+        if os.path.exists(cp):
+            out[k] = pl.read_parquet(cp)
+        else:
+            ok = False; break
+    if ok:
+        return out
+    # only cache files that are no longer being written (not modified in the last 2 minutes)
+    fresh = parse(path)
+    import time as _t
+    if _t.time() - st.st_mtime > 120:
+        for old in glob.glob(os.path.join(CACHE, f"{os.path.relpath(path, DATA).replace(os.sep, '__')}__*")):
+            os.remove(old)
+        for k in kinds:
+            fresh.get(k, pl.DataFrame()).write_parquet(os.path.join(CACHE, f"{tag}__{k}.parquet"))
+    return fresh
+
+
+def _concat(frames):
+    frames = [f for f in frames if f.height]
+    if not frames:
+        return pl.DataFrame()
+    return pl.concat(frames, how="diagonal_relaxed")
+
+
+def load_raw(min_slot=None, max_slot=None, kinds=KINDS):
+    parts = {k: [] for k in kinds}
+    for path in files("pump_tx"):
+        t = _cached(path, _parse_pump_file, KINDS)
+        for k in kinds:
+            parts[k].append(t.get(k, pl.DataFrame()))
+    out = {}
+    for k in kinds:
+        d = _concat(parts[k])
+        if d.height:
+            if min_slot: d = d.filter(pl.col("slot") >= min_slot)
+            if max_slot: d = d.filter(pl.col("slot") <= max_slot)
+            d = d.unique(subset=KEYS[k], keep="first").sort(KEYS[k])
+        out[k] = d
+    return out
+
+
+def _parse_xfer_file(path):
+    rows = [dict(slot=r["slot"], idx=r["idx"], frm=r["frm"], to=r["to"], lam=r["lam"], pre_to=r.get("pre_to"),
+                 ok=r.get("ok", True)) for r in _iter_gz(path)]
+    return dict(transfers=pl.DataFrame(rows, infer_schema_length=None) if rows else pl.DataFrame())
 
 
 def load_transfers(min_slot=None, max_slot=None):
-    rows = []
-    for path in files("transfers"):
-        for r in _iter_gz(path):
-            s = r["slot"]
-            if (min_slot and s < min_slot) or (max_slot and s > max_slot):
-                continue
-            rows.append(r)
-    if not rows:
-        return pl.DataFrame()
-    d = pl.DataFrame(rows, infer_schema_length=None)
+    d = _concat([_cached(p, _parse_xfer_file, ("transfers",))["transfers"] for p in files("transfers")])
+    if not d.height:
+        return d
+    if min_slot: d = d.filter(pl.col("slot") >= min_slot)
+    if max_slot: d = d.filter(pl.col("slot") <= max_slot)
     return d.unique(subset=["slot", "idx", "frm", "to", "lam"], keep="first").sort(["slot", "idx"])
 
 
