@@ -112,6 +112,31 @@ first snipers.
 - **Funding "dry powder":** fresh wallets funded by the creator's funder almost never buy the coin
   (78 of 81,715). Funders are mostly hubs, and operators pump with other wallets.
 
+### 3.6 Winning wallets (who profits without being first?)
+`analysis/winners.py`, `replicate2.py`, `exit_mechanics.py`.
+
+- Realised PnL on closed round trips, coins that didn't graduate: all wallets together lost
+  −3,956 SOL.
+- Wallets were selected on the first half and measured on the second, after removing round trips
+  where the wallet sold tokens it had received rather than bought (0.5% of round trips, but they
+  inflated the apparent skill):
+  - top late-entry winners: +20.6% in the first half, **+1.9%** in the second
+  - all late winners: **+0.1%** in the second half
+  - late losers: **−4.8%** in the second half (losing persists, winning mostly doesn't)
+- These wallets are not fast and not operator-affiliated:
+  - median fee 25k lamports, tips on 6% of sells
+  - 3% of their sells land right behind the previous trade
+  - same single-funder concentration as losers (15% vs 14%)
+- Replicating their exact entry and scale-out moments at 0.25 SOL:
+  - taking their exact place: **−5.4%** mean
+  - with our landing: **−13.7%** mean
+
+### 3.7 Low-fee recheck
+The simulations assume 0.0015 SOL fixed cost per tx. Re-running the operator walk-forward at
+0.00005 SOL (what cheap non-racing traders actually pay) moves results up about 1 point: 1 of 48
+cells turns positive (+0.7%, 444 trades, second half −0.2%). Lower fees are worth adopting, but they
+don't create an edge.
+
 ## 4. Facts worth money regardless
 
 1. **Stop overpaying priority fees.** For successful curve buys, priority + tip is:

@@ -20,7 +20,7 @@ TRIG_AGE = int(os.environ.get("TRIG_AGE", "2"))
 HORIZON = 2800 + 50  # slots: longest policy window + margin
 
 
-def build_grid(cache=os.path.join(D, f"grid_age{TRIG_AGE}_s{SIZE}.npz")):
+def build_grid(cache=os.path.join(D, f"grid_age{TRIG_AGE}_s{SIZE}_f{os.environ.get('BUY_FIXED','0.0015')}.npz")):
     F = pl.read_parquet(os.path.join(D, "launches.parquet"))
     if os.path.exists(cache) and os.path.getmtime(cache) > os.path.getmtime(os.path.join(D, "launches.parquet")):
         z = np.load(cache, allow_pickle=True)

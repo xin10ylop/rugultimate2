@@ -19,9 +19,9 @@ LAM = 1e9
 
 @dataclass
 class Costs:
-    buy_fixed: float = 0.0015    # SOL: priority fee + tip on a landed buy
-    sell_fixed: float = 0.0015   # SOL: priority fee + tip on a sell
-    fail_fixed: float = 0.0006   # SOL: refused buy (price limit) still pays base+priority
+    buy_fixed: float = float(__import__("os").environ.get("BUY_FIXED", "0.0015"))   # SOL: priority + tip, landed buy
+    sell_fixed: float = float(__import__("os").environ.get("SELL_FIXED", "0.0015")) # SOL: priority + tip, sell
+    fail_fixed: float = float(__import__("os").environ.get("FAIL_FIXED", "0.0006")) # SOL: refused buy still pays
     max_slip: float = 0.20       # refuse the buy if fill price > trigger price * (1+max_slip)
 
 
