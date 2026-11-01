@@ -77,7 +77,7 @@ def ix_iter(tx, keys):
             yield (inner["index"], j, ix)
 
 def parse_block(slot, blk, tip_accts):
-    out_tx, out_xfer = [], []
+    out_tx, out_xfer, out_tok = [], [], []
     bt = blk.get("blockTime")
     for idx, tx in enumerate(blk["transactions"]):
         meta = tx["meta"]; msg = tx["transaction"]["message"]
@@ -113,6 +113,15 @@ def parse_block(slot, blk, tip_accts):
             if lam >= MIN_XFER:
                 out_xfer.append(dict(slot=slot, idx=idx, sig=sig, frm=frm, to=to, lam=lam, pre_to=pre_to,
                                      ok=meta["err"] is None, signer=signer))
+        if not watched and meta["err"] is None:
+            ptb = {(b["accountIndex"]): b for b in (meta.get("preTokenBalances") or []) if str(b.get("mint", "")).endswith("pump")}
+            qtb = {(b["accountIndex"]): b for b in (meta.get("postTokenBalances") or []) if str(b.get("mint", "")).endswith("pump")}
+            for ai in set(ptb) | set(qtb):
+                b0 = ptb.get(ai); b1 = qtb.get(ai); ref = b1 or b0
+                a0 = int(b0["uiTokenAmount"]["amount"]) if b0 else 0
+                a1 = int(b1["uiTokenAmount"]["amount"]) if b1 else 0
+                if a0 != a1:
+                    out_tok.append(dict(slot=slot, idx=idx, mint=ref["mint"], owner=ref.get("owner"), delta=a1 - a0, signer=signer))
         if not watched:
             continue
         evs = []
@@ -152,7 +161,7 @@ def parse_block(slot, blk, tip_accts):
                            fee=meta["fee"], cu=meta.get("computeUnitsConsumed"), cu_price=cu_price,
                            cu_limit=cu_limit, tips=tips, small_xfers=small, ixs=ixnames, evs=evs,
                            sol_delta=(post[0] - pre[0])))
-    return out_tx, out_xfer
+    return out_tx, out_xfer, out_tok
 
 TIP_ACCTS = set("""96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5 HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe
 Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49
@@ -256,8 +265,8 @@ async def main():
                     except Exception as e:
                         res = {"error": {"code": -1, "message": str(e)}}
                     if "result" in res and res["result"] is not None:
-                        txr, xfr = parse_block(slot, res["result"], TIP_ACCTS)
-                        results[slot] = (res["result"].get("blockTime"), txr, xfr); stats["ok"] += 1; per_url[u]["ok"] += 1
+                        txr, xfr, tkr = parse_block(slot, res["result"], TIP_ACCTS)
+                        results[slot] = (res["result"].get("blockTime"), txr, xfr, tkr); stats["ok"] += 1; per_url[u]["ok"] += 1
                         backoff = max(0.25, backoff * 0.8); break
                     code = res.get("error", {}).get("code")
                     if code in (-32007, -32009):  # skipped / missing in long-term storage
@@ -283,8 +292,8 @@ async def main():
                 while (done_upto + 1) in results:
                     s = done_upto + 1; r = results.pop(s)
                     if r is not None:
-                        bt, txr, xfr = r
-                        sink.write("pump_tx", txr, bt); sink.write("transfers", xfr, bt)
+                        bt, txr, xfr, tkr = r
+                        sink.write("pump_tx", txr, bt); sink.write("transfers", xfr, bt); sink.write("tok_moves", tkr, bt)
                         stats["tx"] += len(txr); stats["xf"] += len(xfr)
                     done_upto = s; progressed = True
                 if time.time() - last > 30:

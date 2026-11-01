@@ -26,6 +26,7 @@ def _iter_gz(path):
 
 def files(kind):
     pats = [os.path.join(DATA, "fwd", f"{kind}_*.jsonl.gz"), os.path.join(DATA, "live", f"{kind}_*.jsonl.gz"),
+            os.path.join(DATA, "live2", f"{kind}_*.jsonl.gz"),
             os.path.join(DATA, "back", "*", f"{kind}_*.jsonl.gz"),
             os.path.join(DATA, "back2", "*", f"{kind}_*.jsonl.gz")]
     out = []
