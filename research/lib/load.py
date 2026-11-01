@@ -26,7 +26,8 @@ def _iter_gz(path):
 
 def files(kind):
     pats = [os.path.join(DATA, "fwd", f"{kind}_*.jsonl.gz"), os.path.join(DATA, "live", f"{kind}_*.jsonl.gz"),
-            os.path.join(DATA, "back", "*", f"{kind}_*.jsonl.gz")]
+            os.path.join(DATA, "back", "*", f"{kind}_*.jsonl.gz"),
+            os.path.join(DATA, "back2", "*", f"{kind}_*.jsonl.gz")]
     out = []
     for p in pats:
         out += glob.glob(p)
@@ -57,11 +58,14 @@ def load_raw(min_slot=None, max_slot=None):
                                        user=e["user"], buy=bool(e["buy"]), sol=e["sol"], tok=e["tok"], vsol=e["vsol"],
                                        vtok=e["vtok"], rsol=e["rsol"], rtok=e["rtok"], fee=e.get("fee", 0),
                                        cfee=e.get("cfee", 0), creator=e.get("creator"), ix=e.get("ix"),
-                                       ts=e.get("ts"), txfee=r["fee"], cu_price=r.get("cu_price"), tip=tip))
+                                       ts=e.get("ts"), txfee=r["fee"], cu_price=r.get("cu_price"), tip=tip,
+                                       quote=e.get("quote"), cb=e.get("cb", 0), hr=e.get("hr", 0), bb=e.get("bb", 0)))
                 elif ev == "CreateEvent" and "mint" in e:
                     creates.append(dict(slot=s, idx=r["idx"], bt=r.get("bt"), signer=r["signer"], mint=e["mint"],
                                         creator=e["creator"], user=e["user"], name=e.get("name"), symbol=e.get("symbol"),
-                                        uri=e.get("uri"), mayhem=e.get("mayhem"), curve=e.get("curve")))
+                                        uri=e.get("uri"), mayhem=e.get("mayhem"), curve=e.get("curve"),
+                                        quote=e.get("quote"), cfee_bps=e.get("cfee_bps"), cashback=e.get("cashback"),
+                                        holder_reward=e.get("holder_reward")))
                 elif ev == "CompleteEvent" and "mint" in e:
                     completes.append(dict(slot=s, idx=r["idx"], bt=r.get("bt"), mint=e["mint"], user=e["user"]))
                 else:

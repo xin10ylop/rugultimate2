@@ -9,12 +9,15 @@ SLOT_S = 0.214  # measured slot time (2026): ~4.67 slots/s
 def build_tapes(trades: pl.DataFrame, creates: pl.DataFrame, only_created=True):
     """Return {mint: Coin} for coins whose CreateEvent we observed (full history from birth)."""
     t = trades.filter(pl.col("sol") > 0)
+    if "quote" in t.columns:  # only SOL-quoted curves (other quote mints use different units)
+        t = t.filter(pl.col("quote").is_null())
     if only_created:
         t = t.join(creates.select("mint"), on="mint", how="semi")
     t = t.sort(["mint", "slot", "idx", "k"])
     out = {}
     for (mint,), g in t.group_by(["mint"], maintain_order=True):
-        fr = ((g["fee"] + g["cfee"]) / g["sol"]).median()
+        extra_fee = (g["cb"].fill_null(0) + g["hr"].fill_null(0)) if "cb" in g.columns else 0
+        fr = ((g["fee"] + g["cfee"] + extra_fee) / g["sol"]).filter(g["user"] != "BwWK17cbHxwWBKZkUYvzxLcNQ1YVyaFezduWbtm2de6s").median()
         out[mint] = Coin(mint=mint, slot=g["slot"].to_numpy(), idx=g["idx"].to_numpy(),
                          vsol=g["vsol"].to_numpy().astype(np.float64), vtok=g["vtok"].to_numpy().astype(np.float64),
                          fee_rate=float(fr) if fr is not None and np.isfinite(fr) else 0.0125,

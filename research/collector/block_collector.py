@@ -47,13 +47,19 @@ def decode_event(name, b):
                      fee_bps=r.u64(), fee=r.u64(), creator=r.pk(), cfee_bps=r.u64(), cfee=r.u64())
             try:
                 r.u8(); r.u64(); r.u64(); r.u64(); r.i64(); d["ix"] = r.st()
+                d["mayhem"] = r.u8(); d["cb_bps"] = r.u64(); d["cb"] = r.u64(); d["bb_bps"] = r.u64(); d["bb"] = r.u64()
+                nsh = struct.unpack_from("<I", r.b, r.o)[0]; r.o += 4 + nsh * 34
+                q = r.pk(); d["quote"] = None if q == SYS else q
+                d["qamt"] = r.u64(); r.u64(); r.u64(); d["hr_bps"] = r.u64(); d["hr"] = r.u64()
             except Exception: pass
             return d
         if name == "CreateEvent":
             d = dict(name=r.st()[:64], symbol=r.st()[:32], uri=r.st()[:200], mint=r.pk(), curve=r.pk(),
                      user=r.pk(), creator=r.pk(), ts=r.i64(), vtok=r.u64(), vsol=r.u64(), rtok=r.u64(), supply=r.u64())
             try:
-                d["token_program"] = r.pk(); d["mayhem"] = r.u8()
+                d["token_program"] = r.pk(); d["mayhem"] = r.u8(); d["cashback"] = r.u8()
+                q = r.pk(); d["quote"] = None if q == SYS else q
+                d["vquote"] = r.u64(); d["cfee_bps"] = r.u64(); d["holder_reward"] = r.u8()
             except Exception: pass
             return d
         if name == "CompleteEvent":
