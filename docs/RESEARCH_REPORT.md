@@ -137,6 +137,17 @@ The simulations assume 0.0015 SOL fixed cost per tx. Re-running the operator wal
 cells turns positive (+0.7%, 444 trades, second half −0.2%). Lower fees are worth adopting, but they
 don't create an edge.
 
+### 3.8 Dump precursors and other launchpads
+- **Most curve "dumps" are Mayhem noise.** 82% of slots with a price drop of 40% or more have no
+  human seller at all; they are agent steps.
+- **Human dumps have no warning.** The median human dump is **one wallet selling about 10 SOL in a
+  single transaction**. Only **1 of 40** had any wallet-to-wallet move of that coin in the preceding
+  200 slots, and the creator sold in just 3% of dump slots.
+  - The consolidation "front-run sell" signal from the videos is essentially absent in Nov 2026 data.
+- **Other launchpads are close to empty.** Successful txs per block: LaunchLab 0.4, Meteora DBC 0.4,
+  Moonshot, Boop and Heaven 0. Compare pump.fun 10.5 and PumpSwap 47.4. There's no less-crowded
+  venue with enough flow.
+
 ## 4. Facts worth money regardless
 
 1. **Stop overpaying priority fees.** For successful curve buys, priority + tip is:
